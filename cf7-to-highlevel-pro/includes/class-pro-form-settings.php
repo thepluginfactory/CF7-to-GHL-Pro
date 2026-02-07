@@ -32,6 +32,13 @@ class CF7_To_GHL_Pro_Form_Settings {
     private $meta_key = '_cf7_to_ghl_pro_field_mapping';
 
     /**
+     * Pending JS data to output in the admin footer.
+     *
+     * @var array|null
+     */
+    private $footer_js_data = null;
+
+    /**
      * Get the single instance.
      *
      * @return CF7_To_GHL_Pro_Form_Settings
@@ -477,24 +484,35 @@ class CF7_To_GHL_Pro_Form_Settings {
             </div>
         </div>
 
-        <?php $this->render_inline_js( $cf7_fields, $ghl_options_html, $refresh_nonce ); ?>
         <?php
+        // Store data for footer JS output (script tags don't work inside CF7 panels).
+        $this->footer_js_data = array(
+            'ghlOptions'   => $ghl_options_html,
+            'cf7Fields'    => array_values( $cf7_fields ),
+            'refreshNonce' => $refresh_nonce,
+        );
+        add_action( 'admin_print_footer_scripts', array( $this, 'print_footer_js' ), 99 );
     }
 
     /**
-     * Output inline JavaScript for the field mapping panel.
+     * Output JavaScript in the admin footer.
      *
-     * @param array  $cf7_fields       Array of detected CF7 field names.
-     * @param string $ghl_options_html GHL dropdown options HTML (no selection).
-     * @param string $refresh_nonce    Nonce for the AJAX refresh action.
+     * Script tags inside CF7 editor panels are stripped, so we output
+     * the field mapping JS via admin_print_footer_scripts instead.
      */
-    private function render_inline_js( $cf7_fields, $ghl_options_html, $refresh_nonce ) {
+    public function print_footer_js() {
+        if ( null === $this->footer_js_data ) {
+            return;
+        }
+
+        $data = $this->footer_js_data;
+        $this->footer_js_data = null;
         ?>
         <script type="text/javascript">
         jQuery(document).ready(function($) {
-            var ghlOptionsHtml = <?php echo wp_json_encode( $ghl_options_html ); ?>;
-            var cf7Fields = <?php echo wp_json_encode( array_values( $cf7_fields ) ); ?>;
-            var refreshNonce = <?php echo wp_json_encode( $refresh_nonce ); ?>;
+            var ghlOptionsHtml = <?php echo wp_json_encode( $data['ghlOptions'] ); ?>;
+            var cf7Fields = <?php echo wp_json_encode( $data['cf7Fields'] ); ?>;
+            var refreshNonce = <?php echo wp_json_encode( $data['refreshNonce'] ); ?>;
 
             function buildCf7Options() {
                 var html = '<option value=""><?php echo esc_js( __( '-- Select CF7 Field --', 'cf7-to-highlevel-pro' ) ); ?></option>';
