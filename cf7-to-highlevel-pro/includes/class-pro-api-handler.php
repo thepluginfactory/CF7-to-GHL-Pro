@@ -160,7 +160,17 @@ class CF7_To_GHL_Pro_API_Handler {
                 continue;
             }
 
-            // Handle custom fields.
+            // Handle API-fetched custom fields (from dynamic dropdown).
+            if ( 0 === strpos( $ghl_field, '__api_custom__' ) ) {
+                $field_key = substr( $ghl_field, strlen( '__api_custom__' ) );
+                $custom_fields[] = array(
+                    'key'   => $field_key,
+                    'value' => $value,
+                );
+                continue;
+            }
+
+            // Handle manually entered custom fields.
             if ( '__custom__' === $ghl_field && ! empty( $custom_key ) ) {
                 $custom_fields[] = array(
                     'key'   => $custom_key,
