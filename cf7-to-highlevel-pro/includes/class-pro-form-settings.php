@@ -168,26 +168,31 @@ class CF7_To_GHL_Pro_Form_Settings {
         );
 
         if ( is_wp_error( $response ) ) {
+            CF7_To_GHL_Logger::log(
+                'error',
+                'Custom fields API connection error',
+                array( 'error' => $response->get_error_message() )
+            );
             return array();
         }
 
-        $code = wp_remote_retrieve_response_code( $response );
-        $body = json_decode( wp_remote_retrieve_body( $response ), true );
+        $code     = wp_remote_retrieve_response_code( $response );
+        $raw_body = wp_remote_retrieve_body( $response );
+        $body     = json_decode( $raw_body, true );
+
+        // Always log the raw response so we can debug.
+        CF7_To_GHL_Logger::log(
+            ( $code >= 200 && $code < 300 ) ? 'success' : 'error',
+            'Custom fields API response (HTTP ' . $code . ')',
+            array(
+                'http_code'    => $code,
+                'raw_body'     => $raw_body,
+            )
+        );
 
         if ( $code < 200 || $code >= 300 || empty( $body ) ) {
             return array();
         }
-
-        // Log raw response for debugging custom field fetch issues.
-        CF7_To_GHL_Logger::log(
-            'success',
-            'Custom fields API response (debug)',
-            array(
-                'http_code'     => $code,
-                'response_keys' => array_keys( $body ),
-                'raw_response'  => $body,
-            )
-        );
 
         $fields = isset( $body['customFields'] ) ? $body['customFields'] : array();
 
