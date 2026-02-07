@@ -3,7 +3,7 @@
  * Plugin Name: CF7 to HighLevel Pro
  * Plugin URI: https://github.com/thepluginfactory/CF7-to-GHL-Pro
  * Description: Pro add-on for CF7 to HighLevel - adds per-form field mapping with support for all HighLevel contact fields and custom fields.
- * Version: 1.1.1
+ * Version: 1.1.2
  * Author: The Plugin Factory
  * Author URI: https://github.com/thepluginfactory
  * License: GPL v2 or later
@@ -17,7 +17,7 @@ if ( ! defined( 'ABSPATH' ) ) {
     exit;
 }
 
-define( 'CF7_TO_GHL_PRO_VERSION', '1.1.1' );
+define( 'CF7_TO_GHL_PRO_VERSION', '1.1.2' );
 define( 'CF7_TO_GHL_PRO_DIR', plugin_dir_path( __FILE__ ) );
 define( 'CF7_TO_GHL_PRO_URL', plugin_dir_url( __FILE__ ) );
 

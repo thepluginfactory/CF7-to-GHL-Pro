@@ -148,8 +148,8 @@ class CF7_To_GHL_Pro_API_Handler {
             // Handle message: save as custom field on the contact.
             if ( 'message' === $ghl_field ) {
                 $custom_fields[] = array(
-                    'key'   => 'message',
-                    'value' => $value,
+                    'key'         => 'message',
+                    'field_value' => $value,
                 );
                 continue;
             }
@@ -161,20 +161,22 @@ class CF7_To_GHL_Pro_API_Handler {
             }
 
             // Handle API-fetched custom fields (from dynamic dropdown).
+            // Uses field UUID as 'id' with 'field_value' per GHL API v2 spec.
             if ( 0 === strpos( $ghl_field, '__api_custom__' ) ) {
-                $field_key = substr( $ghl_field, strlen( '__api_custom__' ) );
+                $field_id = substr( $ghl_field, strlen( '__api_custom__' ) );
                 $custom_fields[] = array(
-                    'key'   => $field_key,
-                    'value' => $value,
+                    'id'          => $field_id,
+                    'field_value' => $value,
                 );
                 continue;
             }
 
             // Handle manually entered custom fields.
+            // Uses fieldKey as 'key' with 'field_value' per GHL API v2 spec.
             if ( '__custom__' === $ghl_field && ! empty( $custom_key ) ) {
                 $custom_fields[] = array(
-                    'key'   => $custom_key,
-                    'value' => $value,
+                    'key'         => $custom_key,
+                    'field_value' => $value,
                 );
                 continue;
             }

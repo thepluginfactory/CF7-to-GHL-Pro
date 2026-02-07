@@ -119,10 +119,10 @@ class CF7_To_GHL_Pro_Form_Settings {
         if ( ! empty( $custom_fields ) ) {
             $custom_group = array();
             foreach ( $custom_fields as $field ) {
-                $key  = isset( $field['fieldKey'] ) ? $field['fieldKey'] : '';
-                $name = isset( $field['name'] ) ? $field['name'] : $key;
-                if ( ! empty( $key ) ) {
-                    $custom_group[ '__api_custom__' . $key ] = $name;
+                $id   = isset( $field['id'] ) ? $field['id'] : '';
+                $name = isset( $field['name'] ) ? $field['name'] : $id;
+                if ( ! empty( $id ) ) {
+                    $custom_group[ '__api_custom__' . $id ] = $name;
                 }
             }
             if ( ! empty( $custom_group ) ) {
