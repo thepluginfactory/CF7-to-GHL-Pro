@@ -13,7 +13,7 @@ if ( ! defined( 'ABSPATH' ) ) {
  * Pro API Handler class.
  *
  * Hooks into the free plugin's filters to provide per-form field mapping
- * and support for all HighLevel contact fields.
+ * and support for all HighLevel contact fields including conversations.
  */
 class CF7_To_GHL_Pro_API_Handler {
 
@@ -43,7 +43,18 @@ class CF7_To_GHL_Pro_API_Handler {
         'country',
         'gender',
         'dateOfBirth',
+        'timezone',
+        'assignedTo',
     );
+
+    /**
+     * Pending conversation messages keyed by form ID.
+     *
+     * Stored during payload build, sent after contact creation.
+     *
+     * @var array
+     */
+    private $pending_conversations = array();
 
     /**
      * Get the single instance.
@@ -62,6 +73,7 @@ class CF7_To_GHL_Pro_API_Handler {
      */
     private function __construct() {
         add_filter( 'cf7_to_ghl_payload', array( $this, 'build_pro_payload' ), 10, 4 );
+        add_action( 'cf7_to_ghl_contact_created', array( $this, 'send_conversation_message' ), 10, 5 );
     }
 
     /**
@@ -127,6 +139,27 @@ class CF7_To_GHL_Pro_API_Handler {
                 continue;
             }
 
+            // Handle dnd: convert to boolean.
+            if ( 'dnd' === $ghl_field ) {
+                $pro_payload['dnd'] = in_array( strtolower( $value ), array( '1', 'yes', 'true', 'on' ), true );
+                continue;
+            }
+
+            // Handle message: save as custom field on the contact.
+            if ( 'message' === $ghl_field ) {
+                $custom_fields[] = array(
+                    'key'   => 'message',
+                    'value' => $value,
+                );
+                continue;
+            }
+
+            // Handle conversation_message: store for sending after contact creation.
+            if ( 'conversation_message' === $ghl_field ) {
+                $this->pending_conversations[ $form_id ] = $value;
+                continue;
+            }
+
             // Handle custom fields.
             if ( '__custom__' === $ghl_field && ! empty( $custom_key ) ) {
                 $custom_fields[] = array(
@@ -149,6 +182,120 @@ class CF7_To_GHL_Pro_API_Handler {
         }
 
         return $pro_payload;
+    }
+
+    /**
+     * Send a conversation message after contact creation.
+     *
+     * Hooks into `cf7_to_ghl_contact_created` to create a conversation
+     * and send the form message via the Conversations API.
+     *
+     * @param string $contact_id  The HighLevel contact ID.
+     * @param int    $form_id     The CF7 form ID.
+     * @param string $form_title  The CF7 form title.
+     * @param array  $posted_data The submitted form data.
+     * @param string $api_token   The API token.
+     */
+    public function send_conversation_message( $contact_id, $form_id, $form_title, $posted_data, $api_token ) {
+        if ( empty( $this->pending_conversations[ $form_id ] ) ) {
+            return;
+        }
+
+        $message = $this->pending_conversations[ $form_id ];
+        unset( $this->pending_conversations[ $form_id ] );
+
+        $location_id = CF7_To_GHL_Settings::get_setting( 'location_id' );
+
+        // Step 1: Create a conversation for this contact.
+        $conv_response = wp_remote_post(
+            'https://services.leadconnectorhq.com/conversations/',
+            array(
+                'headers' => array(
+                    'Authorization' => 'Bearer ' . $api_token,
+                    'Content-Type'  => 'application/json',
+                    'Version'       => '2021-04-15',
+                ),
+                'body'    => wp_json_encode( array(
+                    'locationId' => $location_id,
+                    'contactId'  => $contact_id,
+                ) ),
+                'timeout' => 30,
+            )
+        );
+
+        if ( is_wp_error( $conv_response ) ) {
+            CF7_To_GHL_Logger::log(
+                'error',
+                'Failed to create conversation: ' . $conv_response->get_error_message(),
+                array( 'form_id' => $form_id, 'contact_id' => $contact_id )
+            );
+            return;
+        }
+
+        $conv_code = wp_remote_retrieve_response_code( $conv_response );
+        $conv_data = json_decode( wp_remote_retrieve_body( $conv_response ), true );
+
+        if ( $conv_code < 200 || $conv_code >= 300 ) {
+            CF7_To_GHL_Logger::log(
+                'error',
+                'Conversation creation failed (HTTP ' . $conv_code . ')',
+                array( 'form_id' => $form_id, 'contact_id' => $contact_id, 'response' => $conv_data )
+            );
+            return;
+        }
+
+        // Step 2: Send the message to the conversation.
+        $msg_response = wp_remote_post(
+            'https://services.leadconnectorhq.com/conversations/messages',
+            array(
+                'headers' => array(
+                    'Authorization' => 'Bearer ' . $api_token,
+                    'Content-Type'  => 'application/json',
+                    'Version'       => '2021-04-15',
+                ),
+                'body'    => wp_json_encode( array(
+                    'type'      => 'Custom',
+                    'contactId' => $contact_id,
+                    'message'   => $message,
+                ) ),
+                'timeout' => 30,
+            )
+        );
+
+        if ( is_wp_error( $msg_response ) ) {
+            CF7_To_GHL_Logger::log(
+                'error',
+                'Failed to send conversation message: ' . $msg_response->get_error_message(),
+                array( 'form_id' => $form_id, 'contact_id' => $contact_id )
+            );
+            return;
+        }
+
+        $msg_code = wp_remote_retrieve_response_code( $msg_response );
+        $msg_data = json_decode( wp_remote_retrieve_body( $msg_response ), true );
+
+        if ( $msg_code >= 200 && $msg_code < 300 ) {
+            CF7_To_GHL_Logger::log(
+                'success',
+                'Conversation message sent to contact',
+                array(
+                    'form_id'    => $form_id,
+                    'contact_id' => $contact_id,
+                    'message'    => $message,
+                    'response'   => $msg_data,
+                )
+            );
+        } else {
+            CF7_To_GHL_Logger::log(
+                'error',
+                'Conversation message failed (HTTP ' . $msg_code . ')',
+                array(
+                    'form_id'    => $form_id,
+                    'contact_id' => $contact_id,
+                    'response'   => $msg_data,
+                )
+            );
+        }
     }
 
     /**

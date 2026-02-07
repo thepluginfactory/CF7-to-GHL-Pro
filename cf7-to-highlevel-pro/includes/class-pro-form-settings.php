@@ -79,11 +79,18 @@ class CF7_To_GHL_Pro_Form_Settings {
                 'postalCode' => 'Postal Code',
                 'country'    => 'Country',
             ),
+            'Message' => array(
+                'message'              => 'Message (saved as custom field)',
+                'conversation_message' => 'Message (sent as conversation)',
+            ),
             'Other'   => array(
                 'source'      => 'Lead Source',
                 'tags'        => 'Tags (comma-separated)',
                 'gender'      => 'Gender',
                 'dateOfBirth' => 'Date of Birth',
+                'timezone'    => 'Timezone',
+                'assignedTo'  => 'Assigned To (GHL User ID)',
+                'dnd'         => 'Do Not Disturb',
             ),
         );
     }
@@ -461,12 +468,12 @@ JS;
             }
         }
 
-        // Message maps to a custom field in the free plugin.
+        // Message maps to the named message option.
         if ( ! empty( $free_mapping['message'] ) ) {
             $pro_rows[] = array(
                 'cf7_field'  => $free_mapping['message'],
-                'ghl_field'  => '__custom__',
-                'custom_key' => 'message',
+                'ghl_field'  => 'message',
+                'custom_key' => '',
             );
         }
 
