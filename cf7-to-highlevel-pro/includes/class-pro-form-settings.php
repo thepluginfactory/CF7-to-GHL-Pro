@@ -49,6 +49,9 @@ class CF7_To_GHL_Pro_Form_Settings {
         add_action( 'cf7_to_ghl_form_panel', array( $this, 'render_field_mapping_panel' ) );
         add_action( 'wpcf7_save_contact_form', array( $this, 'save_field_mapping' ) );
         add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_scripts' ) );
+
+        // Hide the free plugin's basic field mapping UI — Pro replaces it.
+        add_filter( 'cf7_to_ghl_show_free_mapping', '__return_false' );
     }
 
     /**
@@ -249,7 +252,7 @@ JS;
         <div class="cf7-ghl-pro-mapping">
             <h3><?php esc_html_e( 'Field Mapping (Pro)', 'cf7-to-highlevel-pro' ); ?></h3>
             <p class="description">
-                <?php esc_html_e( 'Map each CF7 form field to a HighLevel contact field. When per-form mappings are set, they override the global field mapping.', 'cf7-to-highlevel-pro' ); ?>
+                <?php esc_html_e( 'Map each CF7 form field to a HighLevel contact field. Supports all standard GHL fields plus custom fields.', 'cf7-to-highlevel-pro' ); ?>
             </p>
 
             <table class="cf7-ghl-pro-mapping-table">
