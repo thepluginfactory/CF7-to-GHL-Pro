@@ -178,6 +178,17 @@ class CF7_To_GHL_Pro_Form_Settings {
             return array();
         }
 
+        // Log raw response for debugging custom field fetch issues.
+        CF7_To_GHL_Logger::log(
+            'success',
+            'Custom fields API response (debug)',
+            array(
+                'http_code'     => $code,
+                'response_keys' => array_keys( $body ),
+                'raw_response'  => $body,
+            )
+        );
+
         $fields = isset( $body['customFields'] ) ? $body['customFields'] : array();
 
         set_transient( $transient_key, $fields, HOUR_IN_SECONDS );
@@ -696,15 +707,9 @@ class CF7_To_GHL_Pro_Form_Settings {
      * @return array Pro-format mapping rows, or empty array.
      */
     private function get_free_mappings_as_pro_format( $form_id ) {
-        // Check free plugin's per-form mapping first.
+        // Only use this form's own free plugin mapping (not the global fallback,
+        // which would have field names from a different form).
         $free_mapping = get_post_meta( $form_id, '_cf7_to_ghl_field_mapping', true );
-
-        // Fall back to global mapping.
-        if ( ! is_array( $free_mapping ) || empty( array_filter( $free_mapping ) ) ) {
-            if ( class_exists( 'CF7_To_GHL_Settings' ) ) {
-                $free_mapping = CF7_To_GHL_Settings::get_field_mapping();
-            }
-        }
 
         if ( ! is_array( $free_mapping ) || empty( array_filter( $free_mapping ) ) ) {
             return array();
