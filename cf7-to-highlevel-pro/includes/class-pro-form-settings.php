@@ -113,6 +113,12 @@ class CF7_To_GHL_Pro_Form_Settings {
             .cf7-ghl-pro-buttons { margin-top: 10px; }
             .cf7-ghl-pro-detected { margin-top: 10px; padding: 10px; background: #f0f6fc; border: 1px solid #c3d4e0; border-radius: 4px; }
             .cf7-ghl-pro-detected code { background: #e8e8e8; padding: 2px 6px; border-radius: 3px; margin: 2px; display: inline-block; }
+            .cf7-ghl-pro-custom-key-hint { font-size: 11px; color: #666; margin-top: 3px; font-style: italic; }
+            .cf7-ghl-pro-guide { margin-top: 15px; padding: 12px 15px; background: #fff; border: 1px solid #ccd0d4; border-left: 4px solid #0073aa; border-radius: 4px; }
+            .cf7-ghl-pro-guide h4 { margin: 0 0 8px; font-size: 13px; }
+            .cf7-ghl-pro-guide ol { margin: 0; padding-left: 20px; }
+            .cf7-ghl-pro-guide ol li { margin-bottom: 4px; font-size: 12px; color: #444; }
+            .cf7-ghl-pro-guide code { background: #f0f0f0; padding: 1px 5px; border-radius: 3px; font-size: 11px; }
         ' );
 
         wp_add_inline_script( 'jquery-core', $this->get_inline_js() );
@@ -142,6 +148,8 @@ class CF7_To_GHL_Pro_Form_Settings {
 jQuery(document).ready(function($) {
     var ghlOptions = {$options_json};
 
+    var customKeyHint = '<p class="cf7-ghl-pro-custom-key-hint" style="display:none;">Enter the field key from HighLevel &gt; Settings &gt; Custom Fields</p>';
+
     // Add new mapping row.
     $(document).on('click', '#cf7-ghl-pro-add-row', function(e) {
         e.preventDefault();
@@ -149,7 +157,7 @@ jQuery(document).ready(function($) {
         var row = '<tr>' +
             '<td><input type="text" name="cf7_to_ghl_pro_mapping[' + index + '][cf7_field]" value="" placeholder="e.g. your-name" /></td>' +
             '<td><select name="cf7_to_ghl_pro_mapping[' + index + '][ghl_field]" class="cf7-ghl-pro-ghl-select">' + ghlOptions + '</select>' +
-            '<input type="text" name="cf7_to_ghl_pro_mapping[' + index + '][custom_key]" class="cf7-ghl-pro-custom-key" placeholder="Custom field key" style="display:none;" /></td>' +
+            '<input type="text" name="cf7_to_ghl_pro_mapping[' + index + '][custom_key]" class="cf7-ghl-pro-custom-key" placeholder="e.g. contact.budget_range" style="display:none;" />' + customKeyHint + '</td>' +
             '<td class="cf7-ghl-pro-actions"><a href="#" class="cf7-ghl-pro-remove-row" title="Remove">&times;</a></td>' +
             '</tr>';
         $('.cf7-ghl-pro-mapping-table tbody').append(row);
@@ -161,13 +169,16 @@ jQuery(document).ready(function($) {
         $(this).closest('tr').remove();
     });
 
-    // Toggle custom field key input.
+    // Toggle custom field key input and hint.
     $(document).on('change', '.cf7-ghl-pro-ghl-select', function() {
         var customInput = $(this).siblings('.cf7-ghl-pro-custom-key');
+        var customHint = $(this).siblings('.cf7-ghl-pro-custom-key-hint');
         if ($(this).val() === '__custom__') {
             customInput.show();
+            customHint.show();
         } else {
             customInput.hide().val('');
+            customHint.hide();
         }
     });
 
@@ -210,7 +221,7 @@ jQuery(document).ready(function($) {
         var row = '<tr>' +
             '<td><input type="text" name="cf7_to_ghl_pro_mapping[' + index + '][cf7_field]" value="' + fieldName + '" /></td>' +
             '<td><select name="cf7_to_ghl_pro_mapping[' + index + '][ghl_field]" class="cf7-ghl-pro-ghl-select">' + ghlOptions + '</select>' +
-            '<input type="text" name="cf7_to_ghl_pro_mapping[' + index + '][custom_key]" class="cf7-ghl-pro-custom-key" placeholder="Custom field key" style="display:none;" /></td>' +
+            '<input type="text" name="cf7_to_ghl_pro_mapping[' + index + '][custom_key]" class="cf7-ghl-pro-custom-key" placeholder="e.g. contact.budget_range" style="display:none;" />' + customKeyHint + '</td>' +
             '<td class="cf7-ghl-pro-actions"><a href="#" class="cf7-ghl-pro-remove-row" title="Remove">&times;</a></td>' +
             '</tr>';
         $('.cf7-ghl-pro-mapping-table tbody').append(row);
@@ -284,8 +295,11 @@ JS;
                                            name="cf7_to_ghl_pro_mapping[<?php echo esc_attr( $index ); ?>][custom_key]"
                                            class="cf7-ghl-pro-custom-key"
                                            value="<?php echo esc_attr( isset( $row['custom_key'] ) ? $row['custom_key'] : '' ); ?>"
-                                           placeholder="<?php esc_attr_e( 'Custom field key', 'cf7-to-highlevel-pro' ); ?>"
+                                           placeholder="<?php esc_attr_e( 'e.g. contact.budget_range', 'cf7-to-highlevel-pro' ); ?>"
                                            style="<?php echo ( isset( $row['ghl_field'] ) && '__custom__' === $row['ghl_field'] ) ? '' : 'display:none;'; ?>" />
+                                    <p class="cf7-ghl-pro-custom-key-hint" style="<?php echo ( isset( $row['ghl_field'] ) && '__custom__' === $row['ghl_field'] ) ? '' : 'display:none;'; ?>">
+                                        <?php esc_html_e( 'Enter the field key from HighLevel > Settings > Custom Fields', 'cf7-to-highlevel-pro' ); ?>
+                                    </p>
                                 </td>
                                 <td class="cf7-ghl-pro-actions">
                                     <a href="#" class="cf7-ghl-pro-remove-row" title="<?php esc_attr_e( 'Remove', 'cf7-to-highlevel-pro' ); ?>">&times;</a>
@@ -306,6 +320,28 @@ JS;
             </div>
 
             <div id="cf7-ghl-pro-detected-fields" class="cf7-ghl-pro-detected" style="display: none;"></div>
+
+            <div class="cf7-ghl-pro-guide">
+                <h4><?php esc_html_e( 'How to find your HighLevel Custom Field keys', 'cf7-to-highlevel-pro' ); ?></h4>
+                <ol>
+                    <li><?php esc_html_e( 'Log into your HighLevel account', 'cf7-to-highlevel-pro' ); ?></li>
+                    <li><?php esc_html_e( 'Go to Settings > Custom Fields', 'cf7-to-highlevel-pro' ); ?></li>
+                    <li><?php esc_html_e( 'Find the custom field you want to map to', 'cf7-to-highlevel-pro' ); ?></li>
+                    <li>
+                        <?php
+                        printf(
+                            /* translators: %s: example key */
+                            esc_html__( 'Copy the field key (e.g. %s) - this is the internal identifier, not the display name', 'cf7-to-highlevel-pro' ),
+                            '<code>contact.budget_range</code>'
+                        );
+                        ?>
+                    </li>
+                    <li><?php esc_html_e( 'Select "Custom Field (enter key)" from the HighLevel Field dropdown above and paste the key', 'cf7-to-highlevel-pro' ); ?></li>
+                </ol>
+                <p style="margin: 8px 0 0; font-size: 12px; color: #666;">
+                    <?php esc_html_e( 'Alternatively, you can find custom field keys via Settings > Integrations > Private Integrations in your HighLevel account. The custom field key is listed under each field\'s details.', 'cf7-to-highlevel-pro' ); ?>
+                </p>
+            </div>
         </div>
         <?php
     }
