@@ -247,6 +247,11 @@ JS;
             $mappings = array();
         }
 
+        // If no Pro mapping exists, pre-populate from free plugin's mappings.
+        if ( empty( $mappings ) ) {
+            $mappings = $this->get_free_mappings_as_pro_format( $form_id );
+        }
+
         $ghl_fields = self::get_ghl_fields();
         ?>
         <div class="cf7-ghl-pro-mapping">
@@ -411,5 +416,60 @@ JS;
         }
 
         return $mapping;
+    }
+
+    /**
+     * Convert free plugin's field mapping format to Pro format.
+     *
+     * Checks per-form mapping first, then global settings fallback.
+     * Used to pre-populate Pro's mapping table when no Pro mapping exists.
+     *
+     * @param int $form_id The form ID.
+     * @return array Pro-format mapping rows, or empty array.
+     */
+    private function get_free_mappings_as_pro_format( $form_id ) {
+        // Check free plugin's per-form mapping first.
+        $free_mapping = get_post_meta( $form_id, '_cf7_to_ghl_field_mapping', true );
+
+        // Fall back to global mapping.
+        if ( ! is_array( $free_mapping ) || empty( array_filter( $free_mapping ) ) ) {
+            if ( class_exists( 'CF7_To_GHL_Settings' ) ) {
+                $free_mapping = CF7_To_GHL_Settings::get_field_mapping();
+            }
+        }
+
+        if ( ! is_array( $free_mapping ) || empty( array_filter( $free_mapping ) ) ) {
+            return array();
+        }
+
+        $pro_rows = array();
+
+        // Map free plugin keys to Pro GHL field values.
+        $key_to_ghl = array(
+            'full_name' => 'full_name',
+            'email'     => 'email',
+            'phone'     => 'phone',
+        );
+
+        foreach ( $key_to_ghl as $free_key => $ghl_field ) {
+            if ( ! empty( $free_mapping[ $free_key ] ) ) {
+                $pro_rows[] = array(
+                    'cf7_field'  => $free_mapping[ $free_key ],
+                    'ghl_field'  => $ghl_field,
+                    'custom_key' => '',
+                );
+            }
+        }
+
+        // Message maps to a custom field in the free plugin.
+        if ( ! empty( $free_mapping['message'] ) ) {
+            $pro_rows[] = array(
+                'cf7_field'  => $free_mapping['message'],
+                'ghl_field'  => '__custom__',
+                'custom_key' => 'message',
+            );
+        }
+
+        return $pro_rows;
     }
 }
