@@ -111,8 +111,12 @@ class CF7_To_GHL_Pro_API_Handler {
             $ghl_field = $row['ghl_field'];
             $custom_key = isset( $row['custom_key'] ) ? $row['custom_key'] : '';
 
-            // Get the value from the submitted form data.
-            $value = $this->get_posted_value( $posted_data, $cf7_field );
+            // Get the value: fixed text or from submitted form data.
+            if ( '__fixed__' === $cf7_field ) {
+                $value = isset( $row['fixed_value'] ) ? $row['fixed_value'] : '';
+            } else {
+                $value = $this->get_posted_value( $posted_data, $cf7_field );
+            }
 
             if ( '' === $value ) {
                 continue;

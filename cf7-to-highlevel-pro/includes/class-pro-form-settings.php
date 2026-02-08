@@ -386,11 +386,26 @@ class CF7_To_GHL_Pro_Form_Settings {
                             $current_ghl        = isset( $row['ghl_field'] ) ? $row['ghl_field'] : '';
                             $current_custom_key = isset( $row['custom_key'] ) ? $row['custom_key'] : '';
 
-                            // CF7 field: detected → select it; otherwise → "Other" + manual input.
+                            // CF7 field: detect fixed values, detected fields, or "Other".
+                            $current_fixed = isset( $row['fixed_value'] ) ? $row['fixed_value'] : '';
                             $cf7_in_list   = in_array( $current_cf7, $cf7_fields, true );
-                            $cf7_select    = ( $cf7_in_list || empty( $current_cf7 ) ) ? $current_cf7 : '__other__';
-                            $cf7_manual    = $cf7_in_list ? '' : $current_cf7;
-                            $show_manual   = ( ! empty( $current_cf7 ) && ! $cf7_in_list );
+
+                            if ( '__fixed__' === $current_cf7 ) {
+                                $cf7_select  = '__fixed__';
+                                $cf7_manual  = $current_fixed;
+                                $show_manual = true;
+                                $manual_placeholder = __( 'Enter value to send', 'cf7-to-highlevel-pro' );
+                            } elseif ( $cf7_in_list || empty( $current_cf7 ) ) {
+                                $cf7_select  = $current_cf7;
+                                $cf7_manual  = '';
+                                $show_manual = false;
+                                $manual_placeholder = __( 'Enter field name', 'cf7-to-highlevel-pro' );
+                            } else {
+                                $cf7_select  = '__other__';
+                                $cf7_manual  = $current_cf7;
+                                $show_manual = true;
+                                $manual_placeholder = __( 'Enter field name', 'cf7-to-highlevel-pro' );
+                            }
 
                             // GHL field: if __api_custom__ value not in dropdown, fall back to __custom__.
                             if ( 0 === strpos( $current_ghl, '__api_custom__' ) ) {
@@ -418,6 +433,9 @@ class CF7_To_GHL_Pro_Form_Settings {
                                                 <?php echo esc_html( $field ); ?>
                                             </option>
                                         <?php endforeach; ?>
+                                        <option value="__fixed__" <?php selected( $cf7_select, '__fixed__' ); ?>>
+                                            <?php esc_html_e( 'Fixed Value (enter text)', 'cf7-to-highlevel-pro' ); ?>
+                                        </option>
                                         <option value="__other__" <?php selected( $cf7_select, '__other__' ); ?>>
                                             <?php esc_html_e( 'Other (manual entry)', 'cf7-to-highlevel-pro' ); ?>
                                         </option>
@@ -426,7 +444,7 @@ class CF7_To_GHL_Pro_Form_Settings {
                                            name="cf7_to_ghl_pro_mapping[<?php echo esc_attr( $index ); ?>][cf7_field_manual]"
                                            class="cf7-ghl-pro-cf7-manual"
                                            value="<?php echo esc_attr( $cf7_manual ); ?>"
-                                           placeholder="<?php esc_attr_e( 'Enter field name', 'cf7-to-highlevel-pro' ); ?>"
+                                           placeholder="<?php echo esc_attr( $manual_placeholder ); ?>"
                                            style="<?php echo $show_manual ? '' : 'display:none;'; ?>" />
                                 </td>
                                 <td>
@@ -535,6 +553,7 @@ class CF7_To_GHL_Pro_Form_Settings {
                 cf7Fields.forEach(function(f) {
                     html += '<option value="' + f + '">' + f + '</option>';
                 });
+                html += '<option value="__fixed__"><?php echo esc_js( __( 'Fixed Value (enter text)', 'cf7-to-highlevel-pro' ) ); ?></option>';
                 html += '<option value="__other__"><?php echo esc_js( __( 'Other (manual entry)', 'cf7-to-highlevel-pro' ) ); ?></option>';
                 return html;
             }
@@ -564,11 +583,14 @@ class CF7_To_GHL_Pro_Form_Settings {
                 $(this).closest('tr').remove();
             });
 
-            // CF7 field "Other" toggle.
+            // CF7 field "Other" / "Fixed Value" toggle.
             $(document).on('change', '.cf7-ghl-pro-cf7-select', function() {
                 var manual = $(this).siblings('.cf7-ghl-pro-cf7-manual');
-                if ($(this).val() === '__other__') {
-                    manual.show().focus();
+                var val = $(this).val();
+                if (val === '__fixed__') {
+                    manual.attr('placeholder', '<?php echo esc_js( __( 'Enter value to send', 'cf7-to-highlevel-pro' ) ); ?>').show().focus();
+                } else if (val === '__other__') {
+                    manual.attr('placeholder', '<?php echo esc_js( __( 'Enter field name', 'cf7-to-highlevel-pro' ) ); ?>').show().focus();
                 } else {
                     manual.hide().val('');
                 }
@@ -654,10 +676,19 @@ class CF7_To_GHL_Pro_Form_Settings {
         $sanitized    = array();
 
         foreach ( $raw_mappings as $row ) {
-            // Resolve CF7 field: use dropdown value unless "Other", then use manual input.
-            $cf7_select = isset( $row['cf7_field_select'] ) ? sanitize_text_field( $row['cf7_field_select'] ) : '';
-            $cf7_manual = isset( $row['cf7_field_manual'] ) ? sanitize_text_field( $row['cf7_field_manual'] ) : '';
-            $cf7_field  = ( '__other__' === $cf7_select ) ? $cf7_manual : $cf7_select;
+            // Resolve CF7 field: dropdown value, "Other" manual entry, or "Fixed Value".
+            $cf7_select  = isset( $row['cf7_field_select'] ) ? sanitize_text_field( $row['cf7_field_select'] ) : '';
+            $cf7_manual  = isset( $row['cf7_field_manual'] ) ? sanitize_text_field( $row['cf7_field_manual'] ) : '';
+            $fixed_value = '';
+
+            if ( '__fixed__' === $cf7_select ) {
+                $cf7_field   = '__fixed__';
+                $fixed_value = $cf7_manual;
+            } elseif ( '__other__' === $cf7_select ) {
+                $cf7_field = $cf7_manual;
+            } else {
+                $cf7_field = $cf7_select;
+            }
 
             // Support legacy format (direct cf7_field text input from pre-1.1.0).
             if ( empty( $cf7_field ) && isset( $row['cf7_field'] ) ) {
@@ -667,15 +698,17 @@ class CF7_To_GHL_Pro_Form_Settings {
             $ghl_field  = isset( $row['ghl_field'] ) ? sanitize_text_field( $row['ghl_field'] ) : '';
             $custom_key = isset( $row['custom_key'] ) ? sanitize_text_field( $row['custom_key'] ) : '';
 
-            // Skip empty rows.
-            if ( empty( $cf7_field ) || empty( $ghl_field ) ) {
+            // Skip empty rows (fixed values need manual text, others need a field name).
+            $has_cf7 = ( '__fixed__' === $cf7_field ) ? ! empty( $fixed_value ) : ! empty( $cf7_field );
+            if ( ! $has_cf7 || empty( $ghl_field ) ) {
                 continue;
             }
 
             $sanitized[] = array(
-                'cf7_field'  => $cf7_field,
-                'ghl_field'  => $ghl_field,
-                'custom_key' => $custom_key,
+                'cf7_field'   => $cf7_field,
+                'ghl_field'   => $ghl_field,
+                'custom_key'  => $custom_key,
+                'fixed_value' => $fixed_value,
             );
         }
 

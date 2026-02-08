@@ -4,7 +4,7 @@ Tags: contact form 7, highlevel, crm, field mapping, pro, gohighlevel
 Requires at least: 5.0
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 1.1.2
+Stable tag: 1.1.3
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -78,6 +78,10 @@ Select "Custom Field (enter key)" from the HighLevel Field dropdown, then enter 
 It parses your CF7 form template to find all form fields, so you can click them to add mapping rows without having to manually type field names.
 
 == Changelog ==
+
+= 1.1.3 =
+* Added "Fixed Value" option to CF7 field dropdown - send static text to any GHL field without a form field
+* Useful for form identifiers, campaign tags, or any constant value per form
 
 = 1.1.2 =
 * Fixed custom fields not saving to GHL contacts: API requires 'id'+'field_value' format (was using 'key'+'value')
